@@ -8,3 +8,6 @@ Written in Microsoft Excel, the SponGIS submission template has been designed to
 
 ####The SponGIS Database Schema - See Folder SponGIS_Database
 The SponGIS database has been designed to hold data pertaining or related to deep-sea sponges from around the world. The database is based on established Biodiversity Data Standards and has been purposely built to mirror the OBIS Schema, with some SponGIS specific extensions. This allows simple contribution of our data to a much larger and well used dataset, fulfilling our data arching obligations for the SponGES project.
+
+####The SponGIS Tutorials - See Folder SponGIS_Tutorials
+Here we've got tutorial material to support contributors in converting their data into the SponGIS format, we cover a range of different data types, and go through some of the common mistakes that can be made.
