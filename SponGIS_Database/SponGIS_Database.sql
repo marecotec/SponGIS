@@ -3,7 +3,7 @@ view_distinct_taxon_names
     taxon."scientificName",
     taxon."scientificNameAuthorship"
    FROM taxon;
-   
+
 view_species_occurrences
  SELECT extendedoccurrence."scientificNameID",
     event."decimalLatitude",
@@ -11,15 +11,14 @@ view_species_occurrences
     concat('[', event."decimalLongitude", ', ', event."decimalLatitude", ']') AS concat
    FROM extendedoccurrence
      JOIN event ON extendedoccurrence."eventID" = event."eventID";
-     
+
 view_species_occurrences_geojson
  SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(json_build_object('type', 'Feature', 'id', extendedoccurrence."scientificNameID", 'geometry', st_asgeojson(st_setsrid(st_makepoint(event."decimalLongitude"::double precision, event."decimalLatitude"::double precision), 4326))::json, 'properties', json_build_object('feat_type', 'Point', 'scientificNameID', extendedoccurrence."scientificNameID")))) AS json_build_object
    FROM event
      JOIN extendedoccurrence ON event."eventID" = extendedoccurrence."eventID";
-     
-     
-function - get_occurrences_geojson
 
+
+function - get_occurrences_geojson - Single Species Version
 SELECT json_build_object(
 'type', 'FeatureCollection',
 
@@ -28,9 +27,9 @@ SELECT json_build_object(
         'type',       'Feature',
         'id',         extendedoccurrence."scientificNameID",
         'geometry',   ST_AsGeoJSON(ST_SetSRID(ST_MakePoint(event."decimalLongitude"::double precision, event."decimalLatitude"::double precision), 4326))::json,
-        'properties', 
+        'properties',
         json_build_object(
-    					'feat_type', 'Point', 
+    					'feat_type', 'Point',
     					'scientificNameID', extendedoccurrence."scientificNameID"
                          )
 
@@ -40,14 +39,42 @@ SELECT json_build_object(
 ) AS null
 FROM event
 JOIN extendedoccurrence ON event."eventID" = extendedoccurrence."eventID"
-WHERE extendedoccurrence."scientificNameID" = j::json->>'id';     
-     
-     
-     
-     
-     
-     
-     
+WHERE extendedoccurrence."scientificNameID" = j::json->>'id';
+
+function - get_occurrences_geojson - Multiple & Single Species Version
+SELECT json_build_object(
+'type', 'FeatureCollection',
+
+'features', json_agg(
+    json_build_object(
+        'type',       'Feature',
+        'id',         extendedoccurrence."scientificNameID",
+        'geometry',   ST_AsGeoJSON(ST_SetSRID(ST_MakePoint(event."decimalLongitude"::double precision, event."decimalLatitude"::double precision), 4326))::json,
+        'properties',
+        json_build_object(
+    					'feat_type', 'Point',
+    					'scientificNameID', extendedoccurrence."scientificNameID",
+    					'scientificName', extendedoccurrence."scientificName",
+    					'eventID', extendedoccurrence."eventID",
+    					'basisOfRecord', extendedoccurrence."basisOfRecord",
+    					'minimumDepthInMeters', event."minimumDepthInMeters",
+    					'maximumDepthInMeters', event."maximumDepthInMeters",
+    					'eventDate', event."eventDate"
+                         )
+
+    )
+
+)
+) AS null
+FROM event
+JOIN extendedoccurrence ON event."eventID" = extendedoccurrence."eventID"
+WHERE extendedoccurrence."scientificNameID" IN (select x->>'scientificNameID' FROM json_array_elements(j::json) x);
+
+
+
+
+
+
 CREATE TABLE "public"."event" (
     "dataID" text,
     "eventID" text,
@@ -193,3 +220,40 @@ COMMENT ON COLUMN "public"."taxon"."higherClassification" IS 'A list (concatenat
 COMMENT ON COLUMN "public"."taxon"."taxonomicStatus" IS 'The status of the use of the scientificName as a label for a taxon. Requires taxonomic opinion to define the scope of a taxon. Rules of priority then are used to define the taxonomic status of the nomenclature contained in that scope, combined with the experts opinion. It must be linked to a specific taxonomic reference that defines the concept. Recommended best practice is to use a controlled vocabulary.';
 COMMENT ON COLUMN "public"."taxon"."vernacularName" IS 'The status of the use of the scientificName as a label for a taxon. Requires taxonomic opinion to define the scope of a taxon. Rules of priority then are used to define the taxonomic status of the nomenclature contained in that scope, combined with the experts opinion. It must be linked to a specific taxonomic reference that defines the concept. Recommended best practice is to use a controlled vocabulary.';
 
+
+
+
+
+
+
+
+
+
+CREATE TABLE "public"."extendedmeasurementorfact" (
+    "eventID" text,
+    "occurrenceID" text,
+    "measurementID" text,
+    "measurementType" text,
+    "measurementTypeID" text,
+    "measurementValue" text,
+    "measurementValueID" text,
+    "measurementUnit" text,
+    "measurementUnitID" text,
+    "measurementAccuracy" text,
+    "measurementDate" text,
+    "measurementDeterminedBy" text,
+    "measurementRemarks" text,
+);
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."eventID" IS 'An identifier for the set of information associated with an Event (something that occurs at a place and time).';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."occurrenceID" IS 'An identifier for the Occurrence (as opposed to a particular digital record of the occurrence). In the absence of a persistent global unique identifier, construct one from a combination of identifiers in the record that will most closely make the occurrenceID globally unique.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementID" IS 'An identifier for the MeasurementOrFact (information pertaining to measurements, facts, characteristics, or assertions). May be a global unique identifier or an identifier specific to the data set.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementType" IS 'The nature of the measurement, fact, characteristic, or assertion. Recommended best practice is to use a controlled vocabulary.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementTypeID" IS 'An identifier for the measurementType (global unique identifier, URI). The identifier should reference the measurementType in a vocabulary.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementValue" IS 'The value of the measurement, fact, characteristic, or assertion.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementValueID" IS 'An identifier for facts stored in the column measurementValue (global unique identifier, URI). This identifier can reference a controlled vocabulary (e.g. for sampling instrument names, methodologies, life stages) or reference a methodology paper with a DOI. When the measurementValue refers to a value and not to a fact, the measurementvalueID has no meaning and should remain empty.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementUnit" IS 'The units associated with the measurementValue. Recommended best practice is to use the International System of Units (SI). ';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementUnitID" IS 'An identifier for the measurementUnit (global unique identifier, URI). The identifier should reference the measurementUnit in a vocabulary.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementAccuracy" IS 'The description of the potential error associated with the measurementValue.';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementDate" IS 'The date on which the MeasurementOrFact was made. Recommended best practice is to use an encoding scheme, such as ISO 8601:2004(E).';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementDeterminedBy" IS 'A list (concatenated and separated) of names of people, groups, or organizations who determined the value of the MeasurementOrFact. ';
+COMMENT ON COLUMN "public"."extendedmeasurementorfact"."measurementRemarks" IS 'Comments or notes accompanying the MeasurementOrFact. ';
