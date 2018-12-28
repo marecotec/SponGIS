@@ -4,16 +4,16 @@
 # Load Sheets from your spreadsheet file
 # Set filename of the template that you want to read, here or on the Rmd file.
 #filename <- "/Users/andrewdavies_mbp/Andy's Documents/Websites and comittees/SponGIS/Github/SponGIS/SponGIS_ParseR/SponGIS_boreo_arctic_Geodia_mkII.xlsx"
-filename <- "/Users/andrewdavies_mbp/Andy's Documents/Websites and comittees/SponGIS/Github/SponGIS/SponGIS_ParseR/Uploads/Pending/NEAtlantic_Mediterranean_Pheronema_Xavier_1977-05/SponGIS_Template.xlsx"
+filename <- "/Users/andrewdavies_mbp/Andy's Documents/Websites and comittees/SponGIS/Github/SponGIS/SponGIS_ParseR/Uploads/Pending/Jon/Xavier_Aphro/X_Aphro_SponGIS_Template.xlsx"
 filename_globenv <- "/Users/andrewdavies_mbp/Andy's Documents/Websites and comittees/SponGIS/Github/SponGIS/SponGIS_ParseR/GlobENV/brick.tif"
 
 # If you already have a meta id for a dataset enter it here, otherwise leave blank
-meta_uuid = "f334fe47-18f4-472f-a6bf-1b27a8635fc2"
+meta_uuid = "90786a17-6ee4-4d00-b27a-b73ddaae08b4"
 
 #####################################################
 # Load required packages, you may need to install them using: install("gdata"), and so on.
 #####################################################
-packages <- c("gdata", "xts", "parsedate", "rworldmap", "knitr", "uuid", "XML", "taxize", "jsonlite", "worms", "obistools", "stringr")
+packages <- c("gdata", "xts", "parsedate", "rworldmap", "knitr", "uuid", "XML", "taxize", "jsonlite", "worms", "obistools", "stringr", "dplyr", "raster", "sp")
 sapply(packages, require, character.only = TRUE); rm(packages)
 setwd(dirname(parent.frame(2)$filename))
 #####################################################
@@ -202,8 +202,6 @@ taxon[taxon==""]<-NA
 taxon[taxon=="[[null]]"]<-NA
 
 
-
-
 # Check SponGIS for scientificNameID, and update if required
 scientificNameID <-  as.vector(taxon['scientificNameID'])
 f <- function(x) {
@@ -218,11 +216,21 @@ taxon_spongis[] <- lapply(taxon_spongis, as.character)
 taxon[] <- lapply(taxon, as.character)
 taxon_full_list <- taxon
 
+
+
 if(nrow(taxon_spongis) != nrow(taxon) && nrow(taxon_pre_spongis) > 1) {
   # If any species are in the dataset but missing from SponGIS - We need to work around this
   taxon_missing <- taxon_pre_spongis[0, ]
   scientificNameID <- unique(taxon$scientificNameID)
   scientificNameID_missing <- unique(taxon_pre_spongis$scientificNameID)
+  scientificNameID_missing <- setdiff(scientificNameID,scientificNameID_missing)
+  for (i in 1:length(scientificNameID_missing)) {
+    taxon_missing[i, 1] <- scientificNameID_missing[i]
+  }
+} else if(nrow(taxon_spongis) != nrow(taxon)) {
+  taxon_missing <- taxon[0, ]
+  scientificNameID <- unique(taxon$scientificNameID)
+  scientificNameID_missing <- unique(taxon_spongis$scientificNameID)
   scientificNameID_missing <- setdiff(scientificNameID,scientificNameID_missing)
   for (i in 1:length(scientificNameID_missing)) {
     taxon_missing[i, 1] <- scientificNameID_missing[i]
@@ -267,14 +275,14 @@ if(!identical(taxon, taxon_spongis) && nrow(taxon)==nrow(taxon_spongis)) {
       print(paste("There are:", nrow(taxon), "that need updating.. But check!"))
     }
     rm(taxon_b, taxon_f, taxon_missing)
-  }
+  } 
   
 } else {
   print("Species listed on this taxon sheet are the same as what is currently on SponGIS.. No updates needed, the taxon sheet does not need uploading to SponGIS")
 }
 
 # Check and update occurrence sheet with taxon information from worms
-for(i in scientificNameID$scientificNameID){
+for(i in taxon$scientificNameID){
   occurrences$scientificNameAuthorship[occurrences$scientificNameID == i] <- taxon_full_list$scientificNameAuthorship[taxon_full_list$scientificNameID == i]
   occurrences$scientificName[occurrences$scientificNameID == i] <- taxon_full_list$scientificName[taxon_full_list$scientificNameID == i]
   occurrences$acceptedNameUsageID[occurrences$scientificNameID == i] <- taxon_full_list$acceptedNameUsageID[taxon_full_list$scientificNameID == i]
@@ -435,7 +443,6 @@ rm(glob_diso2_events, glob_sal_events, glob_temp_events)
 }
 #####################################################
 
-
 #####################################################
 # Step 5 - Interactive checks on the data, you may need to go back to source and fix
 #####################################################
@@ -445,7 +452,7 @@ check_extension_eventids(events, occurrences)
 check_extension_eventids(occurrences, events)
 check_extension_eventids(events, measurements)
 check_eventdate(events)
-which(duplicated(events$eventID))
+which(duplicated(events$eventID))+3
 dupe_test <- paste(occurrences$eventID,occurrences$scientificNameID,sep="-")
 which(duplicated(dupe_test))+3
 dupe_test <- paste(measurements$eventID,measurements$measurementID,sep="-")
